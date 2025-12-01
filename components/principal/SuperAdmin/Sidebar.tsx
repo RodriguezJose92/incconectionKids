@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -34,9 +34,12 @@ import {
   Book,
   BookCheck,
   CalendarCheck,
-  RouterIcon,
+  Building,
 } from "lucide-react";
 import type { MenuItem } from "./types";
+import { ManagmentStorage } from "@/components/Services/ManagmentStorage/ManagmentStorage";
+import { goToPath } from "@/components/function/RedirectHomeRoll/GoToPath";
+import { createClient } from "@/lib/supabase/client";
 
 const menuItems: MenuItem[] = [
   { icon: Home, label: "Inicio", href: "/", id: "inicio" },
@@ -49,8 +52,8 @@ const menuItems: MenuItem[] = [
     href: "/periodo-academico",
     id: "periodo-academico",
   },
-    {
-    icon: RouterIcon,
+  {
+    icon: Building,
     label: "Ciclos",
     href: "/ciclos",
     id: "ciclos",
@@ -115,6 +118,56 @@ export function Sidebar({
     avatar: "",
   });
 
+  // Cargar datos del usuario desde Supabase
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        // Obtener el UUID del usuario desde localStorage
+        const userId = ManagmentStorage.getItem<string>("id_User");
+
+        if (!userId) {
+          console.log("No se encontró id_User en el storage");
+          return;
+        }
+
+        // Crear cliente de Supabase
+        const supabase = createClient();
+
+        // Consultar el perfil del usuario
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name, email, avatar_url")
+          .eq("id", userId)
+          .single();
+
+        if (error) {
+          console.error("Error al cargar el perfil:", error);
+          return;
+        }
+
+        if (data) {
+          // Extraer nombre y apellido del full_name
+          const nameParts = data.full_name?.split(" ") || ["", ""];
+          const nombre = nameParts[0] || "Usuario";
+          const apellido = nameParts.slice(1).join(" ") || "";
+
+          // Actualizar el estado con los datos del usuario
+          setUserProfile((prev) => ({
+            ...prev,
+            nombre,
+            apellido,
+            correo: data.email || prev.correo,
+            avatar: data.avatar_url || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Error al cargar el perfil del usuario:", error);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+
   const handleProfileChange = (field: string, value: string) => {
     setUserProfile((prev) => ({ ...prev, [field]: value }));
   };
@@ -125,8 +178,18 @@ export function Sidebar({
   };
 
   const handleLogout = () => {
-    // Lógica de cerrar sesión
-    console.log("Cerrando sesión...");
+    // Limpiar localStorage
+    ManagmentStorage.clear();
+
+    // Limpiar todas las cookies
+    document.cookie.split(";").forEach((cookie) => {
+      const eqPos = cookie.indexOf("=");
+      const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    });
+
+    // Redirigir a la página de inicio
+    goToPath("/");
   };
 
   return (

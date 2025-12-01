@@ -1,5 +1,6 @@
-"use client"
+"use client";
 
+import { useEffect, useState } from "react";
 import {
   Calendar,
   Home,
@@ -11,9 +12,9 @@ import {
   Users,
   GraduationCap,
   Building2,
-} from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import {
   Sidebar,
@@ -27,10 +28,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-} from "@/components/ui/sidebar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CloseSession } from "@/components/function/RedirectHomeRoll/CloseSession"
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CloseSession } from "@/components/function/RedirectHomeRoll/CloseSession";
+import { ManagmentStorage } from "@/components/Services/ManagmentStorage/ManagmentStorage";
+import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
   {
@@ -39,8 +47,8 @@ const menuItems = [
     icon: Home,
   },
   {
-    title: "Mis Cursos",
-    url: "/usuario/profesor/cursos",
+    title: "Mis Clases",
+    url: "/usuario/profesor/clases",
     icon: BookOpen,
   },
   {
@@ -73,10 +81,45 @@ const menuItems = [
     url: "/usuario/profesor/notificaciones",
     icon: Bell,
   },
-]
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const [userData, setUserData] = useState<{
+    full_name: string;
+    email: string;
+    avatar: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const id_User = ManagmentStorage.getItem("id_User");
+        if (!id_User) {
+          console.warn("No se encontró id_User en el almacenamiento local");
+          return;
+        }
+
+        const supabase = await createClient();
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", id_User)
+          .single();
+
+        if (error) {
+          console.error("Error al obtener datos del usuario:", error);
+          return;
+        }
+
+        setUserData(data);
+      } catch (err) {
+        console.error("Error general al recuperar datos del usuario:", err);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   return (
     <Sidebar className="border-r">
@@ -87,7 +130,9 @@ export function AppSidebar() {
           </div>
           <div>
             <h2 className="text-lg font-semibold">Portal Docente</h2>
-            <p className="text-sm text-muted-foreground">Colegio Jaime Quijano</p>
+            <p className="text-sm text-muted-foreground">
+              Colegio Jaime Quijano
+            </p>
           </div>
         </div>
       </SidebarHeader>
@@ -121,12 +166,29 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                    <AvatarFallback>DR</AvatarFallback>
+                    <AvatarImage
+                      src={
+                        userData?.avatar ||
+                        "/placeholder.svg?height=32&width=32"
+                      }
+                    />
+                    <AvatarFallback>
+                      {userData?.full_name
+                        ? userData.full_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                        : "DR"}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start text-left">
-                    <span className="text-sm font-medium">Dr. María Rodríguez</span>
-                    <span className="text-xs text-muted-foreground">Profesora Titular</span>
+                    <span className="text-sm font-medium">
+                      {userData?.full_name || "Cargando..."}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {userData?.email || ""}
+                    </span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -147,5 +209,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

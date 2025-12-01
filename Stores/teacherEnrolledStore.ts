@@ -56,7 +56,7 @@ export const TeacherEnrrolledStore = create<EnrolledStoreProps>()(
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("teacher_enrrolled")
+            .from("teacher_enrolled")
             .insert(enrollment)
             .select();
           if (error) throw error;
@@ -72,7 +72,7 @@ export const TeacherEnrrolledStore = create<EnrolledStoreProps>()(
         set({ loading: true, error: null });
         try {
           const { data: updated, error } = await supabase
-            .from("teacher_enrrolled")
+            .from("teacher_enrolled")
             .update(data)
             .eq("id", id)
             .select();
@@ -93,7 +93,7 @@ export const TeacherEnrrolledStore = create<EnrolledStoreProps>()(
         set({ loading: true, error: null });
         try {
           const { error } = await supabase
-            .from("teacher_enrrolled")
+            .from("teacher_enrolled")
             .delete()
             .eq("id", id);
           if (error) throw error;

@@ -110,7 +110,9 @@ export function CoursesManagement() {
   const [selectedGroupForParents, setSelectedGroupForParents] =
     useState<any>(null);
   const [selectedParentId, setSelectedParentId] = useState("");
-  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(
+    null
+  );
   const [newGroup, setNewGroup] = useState({
     name: "",
     year: new Date().getFullYear(),
@@ -134,8 +136,6 @@ export function CoursesManagement() {
     fetchPeriodos();
     fetchGroupHasStudents();
     fetchStudentEnrolled();
-    fetchGroupHasParents();
-    fetchParentEnrolled();
     fetchParentHasStudent();
   }, []);
 
@@ -409,9 +409,7 @@ export function CoursesManagement() {
       setIsLinkParentOpen(false);
     } catch (error) {
       console.error("Error al vincular padre:", error);
-      alert(
-        "Hubo un error al vincular el padre. Por favor intenta de nuevo."
-      );
+      alert("Hubo un error al vincular el padre. Por favor intenta de nuevo.");
     }
   };
 
@@ -974,7 +972,7 @@ export function CoursesManagement() {
                                 <UserCircle className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium text-muted-foreground">
-                                    Director 
+                                    Director
                                   </p>
                                   <p className="text-sm font-semibold truncate">
                                     {group.director_id
@@ -1311,7 +1309,7 @@ export function CoursesManagement() {
                             (() => {
                               const availableStudents = studentEnrolled.filter(
                                 (enrolled) => {
-                                  console.log(enrolled)
+                                  console.log(enrolled);
                                   // Filtrar solo estudiantes que NO estén ya asignados al grupo
                                   const isAlreadyAssigned =
                                     groupHasStudents.some(
@@ -1465,7 +1463,9 @@ export function CoursesManagement() {
                           : null;
 
                         // Obtener información del padre
-                        const parentInfo = enrolled ? getParentInfo(enrolled.user_id) : null;
+                        const parentInfo = enrolled
+                          ? getParentInfo(enrolled.user_id)
+                          : null;
 
                         console.log("Enrolled:", enrolled);
                         console.log("Student found:", student);
@@ -1499,11 +1499,17 @@ export function CoursesManagement() {
                                 variant="ghost"
                                 size="sm"
                                 className="w-full justify-between hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                                onClick={() => setExpandedStudentId(isExpanded ? null : ghs.id)}
+                                onClick={() =>
+                                  setExpandedStudentId(
+                                    isExpanded ? null : ghs.id
+                                  )
+                                }
                               >
                                 <div className="flex items-center gap-2">
                                   <UserCircle className="w-4 h-4 text-purple-500" />
-                                  <span className="text-sm font-medium">Ver Padre/Tutor</span>
+                                  <span className="text-sm font-medium">
+                                    Ver Padre/Tutor
+                                  </span>
                                 </div>
                                 <ChevronDown
                                   className={`w-4 h-4 transition-transform duration-200 ${
@@ -1515,7 +1521,9 @@ export function CoursesManagement() {
                               {/* Acordeón con información del padre */}
                               <div
                                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                  isExpanded ? "max-h-40 opacity-100 mt-2" : "max-h-0 opacity-0"
+                                  isExpanded
+                                    ? "max-h-40 opacity-100 mt-2"
+                                    : "max-h-0 opacity-0"
                                 }`}
                               >
                                 <div className="p-3 bg-purple-50/50 dark:bg-purple-950/10 rounded-md border border-purple-200 dark:border-purple-900">
@@ -1540,7 +1548,10 @@ export function CoursesManagement() {
                                     </div>
                                   ) : (
                                     <div className="flex items-center justify-center py-2">
-                                      <Badge variant="outline" className="text-xs">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
                                         Sin padre asignado
                                       </Badge>
                                     </div>

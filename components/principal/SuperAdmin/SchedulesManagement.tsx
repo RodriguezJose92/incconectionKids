@@ -29,7 +29,6 @@ import {
   BookOpen,
   MapPin,
 } from "lucide-react";
-import { useEffect } from "react";
 import { GroupHasClassStore } from "@/Stores/GroupHasClassStore";
 import { GroupClassScheduleStore } from "@/Stores/GroupClassScheduleStore";
 import { TeacherEnrrolledStore } from "@/Stores/teacherEnrolledStore";
@@ -49,11 +48,16 @@ export function SchedulesManagement() {
   const [selectedDia, setSelectedDia] = useState("Todos los días");
   const [selectedCurso, setSelectedCurso] = useState("Todos los cursos");
   const [selectedGrupo, setSelectedGrupo] = useState("Todos los grupos");
+  const [isLoading, setIsLoading] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
 
   // Estado para el modal de crear/editar clase
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
+    null
+  );
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
 
   // Estados para el formulario de crear/editar clase
@@ -64,6 +68,20 @@ export function SchedulesManagement() {
     courseId: "",
     groupId: "",
     classroomId: "",
+  });
+
+  // Estados para manejar múltiples horarios
+  const [schedules, setSchedules] = useState<
+    Array<{
+      id?: string; // Para edición
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }>
+  >([]);
+
+  // Estado temporal para agregar un nuevo horario
+  const [tempSchedule, setTempSchedule] = useState({
     dayOfWeek: "",
     startTime: "",
     endTime: "",
@@ -82,7 +100,24 @@ export function SchedulesManagement() {
   const { courses: coursesData, fetchCourses } = CoursesStore();
   const { periodos, fetchPeriodos } = PeriodAcademicStore();
   const { addGroupHasClass, updateGroupHasClass } = GroupHasClassStore();
-  const { addGroupClassSchedule, updateGroupClassSchedule } = GroupClassScheduleStore();
+  const { addGroupClassSchedule, updateGroupClassSchedule } =
+    GroupClassScheduleStore();
+
+  // Función para agregar un horario a la lista
+  const handleAddSchedule = () => {
+    if (!tempSchedule.dayOfWeek || !tempSchedule.startTime || !tempSchedule.endTime) {
+      alert("Por favor completa todos los campos del horario");
+      return;
+    }
+
+    setSchedules([...schedules, { ...tempSchedule }]);
+    setTempSchedule({ dayOfWeek: "", startTime: "", endTime: "" });
+  };
+
+  // Función para eliminar un horario de la lista
+  const handleRemoveSchedule = (index: number) => {
+    setSchedules(schedules.filter((_, i) => i !== index));
+  };
 
   // Función para abrir el modal en modo edición
   const handleEditClick = (horario: any) => {
@@ -96,11 +131,19 @@ export function SchedulesManagement() {
       courseId: group?.course_id || "",
       groupId: horario.group_id || "",
       classroomId: horario.classroom_id || "",
-      dayOfWeek: horario.day_of_week.toString(),
-      startTime: horario.horaInicio.substring(0, 5), // Quitar los segundos
-      endTime: horario.horaFin.substring(0, 5), // Quitar los segundos
     });
 
+    // Cargar todos los horarios de esta clase
+    const classSchedules = groupClassSchedules
+      .filter((s) => s.group_class_id === horario.class_id)
+      .map((s) => ({
+        id: s.id,
+        dayOfWeek: s.day_of_week.toString(),
+        startTime: s.start_time.substring(0, 5),
+        endTime: s.end_time.substring(0, 5),
+      }));
+
+    setSchedules(classSchedules);
     setEditingScheduleId(horario.id);
     setEditingClassId(horario.class_id);
     setIsEditing(true);
@@ -116,12 +159,15 @@ export function SchedulesManagement() {
         !formData.subjectId ||
         !formData.teacherId ||
         !formData.groupId ||
-        !formData.classroomId ||
-        !formData.dayOfWeek ||
-        !formData.startTime ||
-        !formData.endTime
+        !formData.classroomId
       ) {
-        alert("Por favor completa todos los campos");
+        alert("Por favor completa todos los campos de la clase");
+        return;
+      }
+
+      // Validar que haya al menos un horario
+      if (schedules.length === 0) {
+        alert("Por favor agrega al menos un horario para la clase");
         return;
       }
 
@@ -135,7 +181,7 @@ export function SchedulesManagement() {
       }
       const academicPeriodId = activePeriod.id;
 
-      if (isEditing && editingClassId && editingScheduleId) {
+      if (isEditing && editingClassId) {
         // MODO EDICIÓN
         // 1. Actualizar group_has_class
         await updateGroupHasClass(editingClassId, {
@@ -147,14 +193,32 @@ export function SchedulesManagement() {
           updated_at: new Date().toISOString(),
         });
 
-        // 2. Actualizar group_class_schedule
-        await updateGroupClassSchedule(editingScheduleId, {
-          day_of_week: parseInt(formData.dayOfWeek),
-          start_time: formData.startTime + ":00",
-          end_time: formData.endTime + ":00",
-          classroom_id: formData.classroomId,
-          updated_at: new Date().toISOString(),
-        });
+        // 2. Actualizar o crear los horarios
+        for (const schedule of schedules) {
+          if (schedule.id) {
+            // Actualizar horario existente
+            await updateGroupClassSchedule(schedule.id, {
+              day_of_week: parseInt(schedule.dayOfWeek),
+              start_time: schedule.startTime + ":00",
+              end_time: schedule.endTime + ":00",
+              classroom_id: formData.classroomId,
+              updated_at: new Date().toISOString(),
+            });
+          } else {
+            // Crear nuevo horario
+            const newSchedule = {
+              id: crypto.randomUUID(),
+              group_class_id: editingClassId,
+              day_of_week: parseInt(schedule.dayOfWeek),
+              start_time: schedule.startTime + ":00",
+              end_time: schedule.endTime + ":00",
+              classroom_id: formData.classroomId,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+            await addGroupClassSchedule(newSchedule);
+          }
+        }
 
         alert("Clase actualizada exitosamente");
       } else {
@@ -175,26 +239,29 @@ export function SchedulesManagement() {
 
         await addGroupHasClass(newGroupClass);
 
-        // 2. Crear el group_class_schedule
-        const newSchedule = {
-          id: crypto.randomUUID(),
-          group_class_id: newGroupClass.id,
-          day_of_week: parseInt(formData.dayOfWeek),
-          start_time: formData.startTime + ":00",
-          end_time: formData.endTime + ":00",
-          classroom_id: formData.classroomId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+        // 2. Crear todos los horarios
+        for (const schedule of schedules) {
+          const newSchedule = {
+            id: crypto.randomUUID(),
+            group_class_id: newGroupClass.id,
+            day_of_week: parseInt(schedule.dayOfWeek),
+            start_time: schedule.startTime + ":00",
+            end_time: schedule.endTime + ":00",
+            classroom_id: formData.classroomId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
 
-        await addGroupClassSchedule(newSchedule);
+          await addGroupClassSchedule(newSchedule);
+        }
 
-        alert("Clase creada exitosamente");
+        alert("Clase creada exitosamente con múltiples horarios");
       }
 
       // 3. Recargar los datos
       await fetchGroupHasClasses();
       await fetchGroupClassSchedules();
+      setDataLoaded(true);
 
       // 4. Limpiar el formulario y cerrar el modal
       setFormData({
@@ -204,10 +271,9 @@ export function SchedulesManagement() {
         courseId: "",
         groupId: "",
         classroomId: "",
-        dayOfWeek: "",
-        startTime: "",
-        endTime: "",
       });
+      setSchedules([]);
+      setTempSchedule({ dayOfWeek: "", startTime: "", endTime: "" });
       setIsEditing(false);
       setEditingScheduleId(null);
       setEditingClassId(null);
@@ -406,8 +472,10 @@ export function SchedulesManagement() {
     return coloresMaterias[index];
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // Función para cargar datos cuando se presiona el botón "Filtrar"
+  const handleFilterClick = async () => {
+    setIsLoading(true);
+    try {
       await Promise.all([
         fetchGroupHasClasses(),
         fetchGroupClassSchedules(),
@@ -419,9 +487,14 @@ export function SchedulesManagement() {
         fetchCourses(),
         fetchPeriodos(),
       ]);
-    };
-    fetchData();
-  }, []);
+      setDataLoaded(true);
+    } catch (error) {
+      console.error("Error al cargar los datos:", error);
+      alert("Error al cargar los datos. Por favor intenta de nuevo.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // // Debug: Ver qué datos están llegando
   // useEffect(() => {
@@ -451,13 +524,58 @@ export function SchedulesManagement() {
           Gestión de Horarios
         </h2>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            // Limpiar estados antes de abrir el modal en modo creación
+            setFormData({
+              className: "",
+              subjectId: "",
+              teacherId: "",
+              courseId: "",
+              groupId: "",
+              classroomId: "",
+            });
+            setSchedules([]);
+            setTempSchedule({ dayOfWeek: "", startTime: "", endTime: "" });
+            setIsEditing(false);
+            setEditingScheduleId(null);
+            setEditingClassId(null);
+            setIsModalOpen(true);
+          }}
           className="px-4 py-2 bg-black text-white rounded  flex items-center gap-2"
         >
           <span>+</span>
           Crear Nueva Clase
         </button>
       </div>
+
+      {/* Botones para cambiar vista */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground mr-2">
+              Vista:
+            </span>
+            <Button
+              variant={viewMode === "calendar" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("calendar")}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="w-4 h-4" />
+              Calendario Semanal
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="flex items-center gap-2"
+            >
+              <Clock className="w-4 h-4" />
+              Lista de Horarios
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
       <Card>
@@ -468,277 +586,370 @@ export function SchedulesManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Buscar por profesor, materia, curso o aula..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Buscar por profesor, materia, curso o aula..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select
+                value={selectedProfesor}
+                onValueChange={setSelectedProfesor}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por profesor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos los profesores">
+                    Todos los profesores
+                  </SelectItem>
+                  {profesoresList.map((profesor) => (
+                    <SelectItem key={profesor} value={profesor}>
+                      {profesor}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={selectedMateria}
+                onValueChange={setSelectedMateria}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por materia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todas las materias">
+                    Todas las materias
+                  </SelectItem>
+                  {materias.map((materia) => (
+                    <SelectItem key={materia} value={materia}>
+                      {materia}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por curso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos los cursos">
+                    Todos los cursos
+                  </SelectItem>
+                  {cursos.map((curso) => (
+                    <SelectItem key={curso} value={curso}>
+                      {curso}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedGrupo} onValueChange={setSelectedGrupo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos los grupos">
+                    Todos los grupos
+                  </SelectItem>
+                  {grupos.map((grupo) => (
+                    <SelectItem key={grupo} value={grupo}>
+                      {grupo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedDia} onValueChange={setSelectedDia}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por día" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos los días">Todos los días</SelectItem>
+                  {diasSemana.map((dia) => (
+                    <SelectItem key={dia} value={dia}>
+                      {dia}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={selectedProfesor}
-              onValueChange={setSelectedProfesor}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por profesor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos los profesores">
-                  Todos los profesores
-                </SelectItem>
-                {profesoresList.map((profesor) => (
-                  <SelectItem key={profesor} value={profesor}>
-                    {profesor}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedMateria} onValueChange={setSelectedMateria}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por materia" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todas las materias">
-                  Todas las materias
-                </SelectItem>
-                {materias.map((materia) => (
-                  <SelectItem key={materia} value={materia}>
-                    {materia}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedCurso} onValueChange={setSelectedCurso}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por curso" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos los cursos">
-                  Todos los cursos
-                </SelectItem>
-                {cursos.map((curso) => (
-                  <SelectItem key={curso} value={curso}>
-                    {curso}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedGrupo} onValueChange={setSelectedGrupo}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos los grupos">
-                  Todos los grupos
-                </SelectItem>
-                {grupos.map((grupo) => (
-                  <SelectItem key={grupo} value={grupo}>
-                    {grupo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedDia} onValueChange={setSelectedDia}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por día" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Todos los días">Todos los días</SelectItem>
-                {diasSemana.map((dia) => (
-                  <SelectItem key={dia} value={dia}>
-                    {dia}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* Botón Filtrar */}
+            <div className="flex justify-end">
+              <Button
+                onClick={handleFilterClick}
+                disabled={isLoading}
+                className="px-6"
+              >
+                {isLoading ? (
+                  <>
+                    <span className="mr-2">Cargando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filtrar
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Calendario semanal */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5" />
-            <span>Horario Semanal</span>
-            <Badge variant="secondary" className="ml-2">
-              Vista de Calendario
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <div className="grid grid-cols-8 gap-2 min-w-[1200px]">
-              {/* Columna de horas */}
-              <div className="col-span-1">
-                <div className="h-12 flex items-center justify-center font-semibold text-sm bg-muted rounded">
-                  Hora
-                </div>
-                {horasDelDia.map((hora) => (
-                  <div
-                    key={hora}
-                    className="h-20 flex items-center justify-center text-sm font-medium text-muted-foreground border-t"
-                  >
-                    {hora}
-                  </div>
-                ))}
+      {viewMode === "calendar" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="w-5 h-5" />
+              <span>Horario Semanal</span>
+              <Badge variant="secondary" className="ml-2">
+                Vista de Calendario
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!dataLoaded ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Filter className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">
+                  Presiona el botón "Filtrar" para cargar los horarios
+                </p>
+                <p className="text-sm">
+                  Configura los filtros que necesites y luego haz clic en el
+                  botón Filtrar
+                </p>
               </div>
-
-              {/* Columnas de días */}
-              {horariosPorDia.map((diaData) => (
-                <div key={diaData.dia} className="col-span-1 relative">
-                  {/* Encabezado del día */}
-                  <div className="h-12 flex items-center justify-center font-semibold text-sm bg-muted rounded mb-2">
-                    {diaData.dia}
-                  </div>
-
-                  {/* Grid de horas */}
-                  <div className="relative">
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-8 gap-2 min-w-[1200px]">
+                  {/* Columna de horas */}
+                  <div className="col-span-1">
+                    <div className="h-12 flex items-center justify-center font-semibold text-sm bg-muted rounded">
+                      Hora
+                    </div>
                     {horasDelDia.map((hora) => (
                       <div
                         key={hora}
-                        className="h-20 border-t border-border/50"
-                      />
+                        className="h-20 flex items-center justify-center text-sm font-medium text-muted-foreground border-t"
+                      >
+                        {hora}
+                      </div>
                     ))}
+                  </div>
 
-                    {/* Bloques de horarios posicionados absolutamente */}
-                    {diaData.horarios.map((horario) => {
-                      const startHour = parseInt(
-                        horario.horaInicio.split(":")[0]
+                  {/* Columnas de días */}
+                  {horariosPorDia.map((diaData) => (
+                    <div key={diaData.dia} className="col-span-1 relative">
+                      {/* Encabezado del día */}
+                      <div className="h-12 flex items-center justify-center font-semibold text-sm bg-muted rounded mb-2">
+                        {diaData.dia}
+                      </div>
+
+                      {/* Grid de horas */}
+                      <div className="relative">
+                        {horasDelDia.map((hora) => (
+                          <div
+                            key={hora}
+                            className="h-20 border-t border-border/50"
+                          />
+                        ))}
+
+                        {/* Bloques de horarios posicionados absolutamente */}
+                        {diaData.horarios.map((horario) => {
+                          const startHour = parseInt(
+                            horario.horaInicio.split(":")[0]
+                          );
+                          const startMinute = parseInt(
+                            horario.horaInicio.split(":")[1]
+                          );
+                          const endHour = parseInt(
+                            horario.horaFin.split(":")[0]
+                          );
+                          const endMinute = parseInt(
+                            horario.horaFin.split(":")[1]
+                          );
+
+                          // Calcular posición y altura
+                          const topPosition =
+                            (startHour - 6) * 80 + (startMinute / 60) * 80;
+                          const duration =
+                            (endHour - startHour) * 60 +
+                            (endMinute - startMinute);
+                          const height = (duration / 60) * 80;
+
+                          const colorClass = getColorForSubject(
+                            horario.subject_id
+                          );
+
+                          return (
+                            <div
+                              key={horario.id}
+                              className={`absolute left-0 right-0 mx-1 rounded-lg border-2 p-2 ${colorClass} overflow-hidden cursor-pointer hover:opacity-80 transition-opacity`}
+                              style={{
+                                top: `${topPosition}px`,
+                                height: `${height}px`,
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(horario);
+                              }}
+                            >
+                              <div className="text-xs font-semibold truncate">
+                                {horario.materia} - {horario.curso} {horario.grupo}
+                              </div>
+                              <div className="text-xs truncate">
+                                {horario.horaInicio.substring(0, 5)} -{" "}
+                                {horario.horaFin.substring(0, 5)} | {horario.profesor}
+                              </div>
+                              <div className="text-xs truncate opacity-70">
+                                {horario.aula}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de horarios */}
+      {viewMode === "list" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Clock className="w-5 h-5" />
+              <span>Lista de Horarios</span>
+              {dataLoaded && (
+                <Badge variant="secondary" className="ml-2">
+                  {filteredHorarios.length} horarios
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!dataLoaded ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">
+                  Presiona el botón "Filtrar" para cargar los horarios
+                </p>
+                <p className="text-sm">
+                  Configura los filtros que necesites y luego haz clic en el
+                  botón Filtrar
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {filteredHorarios.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No se encontraron horarios que coincidan con los filtros
+                    seleccionados.
+                  </div>
+                ) : (
+                  <>
+                    {/* Agrupar horarios por día */}
+                    {horariosPorDia.map((diaData) => {
+                      // Filtrar solo los horarios que corresponden a este día
+                      const horariosDelDia = filteredHorarios.filter(
+                        (h) => h.day_of_week === diaData.dayNumber
                       );
-                      const startMinute = parseInt(
-                        horario.horaInicio.split(":")[1]
-                      );
-                      const endHour = parseInt(horario.horaFin.split(":")[0]);
-                      const endMinute = parseInt(horario.horaFin.split(":")[1]);
 
-                      // Calcular posición y altura
-                      const topPosition =
-                        (startHour - 6) * 80 + (startMinute / 60) * 80;
-                      const duration =
-                        (endHour - startHour) * 60 + (endMinute - startMinute);
-                      const height = (duration / 60) * 80;
-
-                      const colorClass = getColorForSubject(horario.subject_id);
+                      // Solo mostrar el día si tiene horarios
+                      if (horariosDelDia.length === 0) return null;
 
                       return (
-                        <div
-                          key={horario.id}
-                          className={`absolute left-0 right-0 mx-1 rounded-lg border-2 p-2 ${colorClass} overflow-hidden cursor-pointer hover:opacity-80 transition-opacity`}
-                          style={{
-                            top: `${topPosition}px`,
-                            height: `${height}px`,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditClick(horario);
-                          }}
-                        >
-                          <div className="text-xs font-semibold truncate">
-                            {horario.materia}
+                        <div key={diaData.dia} className="space-y-3">
+                          {/* Encabezado del día */}
+                          <div className="flex items-center gap-2 pb-2 border-b">
+                            <Calendar className="w-5 h-5 text-primary" />
+                            <h3 className="text-lg font-semibold text-foreground">
+                              {diaData.dia}
+                            </h3>
+                            <Badge variant="secondary" className="ml-2">
+                              {horariosDelDia.length}{" "}
+                              {horariosDelDia.length === 1 ? "clase" : "clases"}
+                            </Badge>
                           </div>
-                          <div className="text-xs truncate">
-                            {horario.horaInicio.substring(0, 5)} -{" "}
-                            {horario.horaFin.substring(0, 5)}
-                          </div>
-                          <div className="text-xs truncate opacity-80">
-                            {horario.profesor}
-                          </div>
-                          <div className="text-xs truncate opacity-70">
-                            {horario.aula}
+
+                          {/* Horarios del día */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {horariosDelDia.map((horario) => (
+                              <Card
+                                key={horario.id}
+                                className="border border-border cursor-pointer hover:shadow-lg transition-shadow"
+                                onClick={() => handleEditClick(horario)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <Badge variant="outline" className="text-xs">
+                                        {horario.dia}
+                                      </Badge>
+                                      <span className="text-sm font-medium text-blue-600">
+                                        {horario.horaInicio} - {horario.horaFin}
+                                      </span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <div className="flex items-center space-x-2 text-sm">
+                                        <BookOpen className="w-4 h-4 text-green-500" />
+                                        <span className="font-medium">
+                                          {horario.materia}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center space-x-2 text-sm">
+                                        <Users className="w-4 h-4 text-blue-500" />
+                                        <span>{horario.profesor}</span>
+                                      </div>
+
+                                      <div className="flex items-center space-x-2 text-sm">
+                                        <Users className="w-4 h-4 text-purple-500" />
+                                        <span>
+                                          {horario.curso} - {horario.grupo}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center space-x-2 text-sm">
+                                        <MapPin className="w-4 h-4 text-orange-500" />
+                                        <span>{horario.aula}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
                           </div>
                         </div>
                       );
                     })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de horarios */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Clock className="w-5 h-5" />
-            <span>Lista de Horarios</span>
-            <Badge variant="secondary" className="ml-2">
-              {filteredHorarios.length} horarios
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredHorarios.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No se encontraron horarios que coincidan con los filtros
-                seleccionados.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredHorarios.map((horario) => (
-                  <Card
-                    key={horario.id}
-                    className="border border-border cursor-pointer hover:shadow-lg transition-shadow"
-                    onClick={() => handleEditClick(horario)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
-                            {horario.dia}
-                          </Badge>
-                          <span className="text-sm font-medium text-blue-600">
-                            {horario.horaInicio} - {horario.horaFin}
-                          </span>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2 text-sm">
-                            <BookOpen className="w-4 h-4 text-green-500" />
-                            <span className="font-medium">
-                              {horario.materia}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center space-x-2 text-sm">
-                            <Users className="w-4 h-4 text-blue-500" />
-                            <span>{horario.profesor}</span>
-                          </div>
-
-                          <div className="flex items-center space-x-2 text-sm">
-                            <Users className="w-4 h-4 text-purple-500" />
-                            <span>
-                              {horario.curso} - {horario.grupo}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center space-x-2 text-sm">
-                            <MapPin className="w-4 h-4 text-orange-500" />
-                            <span>{horario.aula}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                  </>
+                )}
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Modal para crear/editar clase */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? "Editar Clase y Horario" : "Crear Nueva Clase y Horario"}
+              {isEditing
+                ? "Editar Clase y Horario"
+                : "Crear Nueva Clase y Horario"}
             </DialogTitle>
           </DialogHeader>
 
@@ -880,67 +1091,135 @@ export function SchedulesManagement() {
             </div>
 
             <div className="border-t pt-4 mt-4">
-              <h3 className="font-semibold mb-4">Horario</h3>
+              <h3 className="font-semibold mb-4">Horarios de la Clase</h3>
 
-              {/* Día de la semana */}
-              <div className="space-y-2 mb-4">
-                <Label htmlFor="dia">Día de la Semana</Label>
-                <Select
-                  value={formData.dayOfWeek}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, dayOfWeek: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar día" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {diasSemana.map((dia, index) => (
-                      <SelectItem key={dia} value={(index + 1).toString()}>
-                        {dia}
-                      </SelectItem>
+              {/* Lista de horarios agregados */}
+              {schedules.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <Label>Horarios agregados ({schedules.length})</Label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {schedules.map((schedule, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                      >
+                        <div className="flex items-center gap-4 text-sm">
+                          <Badge variant="outline">
+                            {diasSemana[parseInt(schedule.dayOfWeek) - 1]}
+                          </Badge>
+                          <span className="font-medium">
+                            {schedule.startTime} - {schedule.endTime}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSchedule(index)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </div>
+                </div>
+              )}
 
-              {/* Hora de inicio y fin */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Formulario para agregar nuevo horario */}
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <Label className="text-sm font-medium">Agregar nuevo horario</Label>
+
+                {/* Día de la semana */}
                 <div className="space-y-2">
-                  <Label htmlFor="hora-inicio">Hora de Inicio</Label>
-                  <Input
-                    id="hora-inicio"
-                    type="time"
-                    placeholder="08:00"
-                    value={formData.startTime}
-                    onChange={(e) =>
-                      setFormData({ ...formData, startTime: e.target.value })
+                  <Label htmlFor="dia">Día de la Semana</Label>
+                  <Select
+                    value={tempSchedule.dayOfWeek}
+                    onValueChange={(value) =>
+                      setTempSchedule({ ...tempSchedule, dayOfWeek: value })
                     }
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar día" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {diasSemana.map((dia, index) => (
+                        <SelectItem key={dia} value={(index + 1).toString()}>
+                          {dia}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hora-fin">Hora de Fin</Label>
-                  <Input
-                    id="hora-fin"
-                    type="time"
-                    placeholder="09:00"
-                    value={formData.endTime}
-                    onChange={(e) =>
-                      setFormData({ ...formData, endTime: e.target.value })
-                    }
-                  />
+
+                {/* Hora de inicio y fin */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hora-inicio">Hora de Inicio</Label>
+                    <Input
+                      id="hora-inicio"
+                      type="time"
+                      placeholder="08:00"
+                      value={tempSchedule.startTime}
+                      onChange={(e) =>
+                        setTempSchedule({
+                          ...tempSchedule,
+                          startTime: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hora-fin">Hora de Fin</Label>
+                    <Input
+                      id="hora-fin"
+                      type="time"
+                      placeholder="09:00"
+                      value={tempSchedule.endTime}
+                      onChange={(e) =>
+                        setTempSchedule({
+                          ...tempSchedule,
+                          endTime: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
+
+                {/* Botón para agregar horario */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddSchedule}
+                  className="w-full"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Agregar Horario
+                </Button>
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsModalOpen(false);
-              setIsEditing(false);
-              setEditingScheduleId(null);
-              setEditingClassId(null);
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsModalOpen(false);
+                setIsEditing(false);
+                setEditingScheduleId(null);
+                setEditingClassId(null);
+                setSchedules([]);
+                setTempSchedule({ dayOfWeek: "", startTime: "", endTime: "" });
+                setFormData({
+                  className: "",
+                  subjectId: "",
+                  teacherId: "",
+                  courseId: "",
+                  groupId: "",
+                  classroomId: "",
+                });
+              }}
+            >
               Cancelar
             </Button>
             <Button onClick={handleCreateOrUpdateClass}>

@@ -6,50 +6,60 @@ import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
 
-export type PeriodoAcademico = {
-  id: string;
-  institute_id: string;
+export type GroupHasMaterial = {
+  id: string; // uuid
+  group_has_class_id: string; // uuid (relación con la clase del grupo)
+  cycle_id: string; // uuid (relación con el ciclo académico)
 
-  name: string;
-  description: string | null;
+  title: string; // text
 
-  start_date: string;
-  end_date: string;
+  bucket: string; // text
+  storage_path: string; // text
+  original_name: string | null; // text
+  mime_type: string | null; // text
+  file_size: number | null; // int8
 
-  is_active: boolean;
+  is_active: boolean; // bool
 
-  created_at: string;
-  updated_at: string;
+  created_at: string; // timestamptz
+  updated_at: string; // timestamptz
 };
 
-type PeriodAcademicStoreProps = {
-  periodos: PeriodoAcademico[];
+type GroupHasMaterialStoreProps = {
+  materials: GroupHasMaterial[];
   loading: boolean;
   error: string | null;
 
-  fetchPeriodos: () => Promise<void>;
-  fetchActivePeriodo: () => Promise<PeriodoAcademico | null>;
-  addPeriodo: (periodo: PeriodoAcademico) => Promise<void>;
-  updatePeriodo: (id: string, data: Partial<PeriodoAcademico>) => Promise<void>;
-  deletePeriodo: (id: string) => Promise<void>;
+  fetchMaterials: () => Promise<void>;
+  fetchMaterialsByGroupClassId: (
+    groupHasClassId: string
+  ) => Promise<GroupHasMaterial[]>;
+  addMaterial: (material: GroupHasMaterial) => Promise<void>;
+  updateMaterial: (
+    id: string,
+    data: Partial<GroupHasMaterial>
+  ) => Promise<void>;
+  deleteMaterial: (id: string) => Promise<void>;
   clear: () => void;
 };
 
-export const PeriodAcademicStore = create<PeriodAcademicStoreProps>()(
+export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
   persist(
     (set, get) => ({
-      periodos: [],
+      materials: [],
       loading: false,
       error: null,
 
-      fetchPeriodos: async () => {
+      fetchMaterials: async () => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("academic_period")
+            .from("group_has_material")
             .select("*");
+
+          console.log(data);
           if (error) throw error;
-          set({ periodos: data || [] });
+          set({ materials: data || [] });
         } catch (err: any) {
           set({ error: err.message });
         } finally {
@@ -57,33 +67,33 @@ export const PeriodAcademicStore = create<PeriodAcademicStoreProps>()(
         }
       },
 
-      fetchActivePeriodo: async () => {
+      fetchMaterialsByGroupClassId: async (groupHasClassId) => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("academic_period")
+            .from("group_has_material")
             .select("*")
-            .eq("is_active", true)
-            .single();
+            .eq("group_has_class_id", groupHasClassId);
           if (error) throw error;
-          return data;
+          set({ materials: data || [] });
+          return data || [];
         } catch (err: any) {
           set({ error: err.message });
-          return null;
+          return [];
         } finally {
           set({ loading: false });
         }
       },
 
-      addPeriodo: async (periodo) => {
+      addMaterial: async (material) => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("academic_period")
-            .insert(periodo)
+            .from("group_has_material")
+            .insert(material)
             .select();
           if (error) throw error;
-          set({ periodos: [...get().periodos, ...(data || [])] });
+          set({ materials: [...get().materials, ...(data || [])] });
         } catch (err: any) {
           set({ error: err.message });
         } finally {
@@ -91,18 +101,18 @@ export const PeriodAcademicStore = create<PeriodAcademicStoreProps>()(
         }
       },
 
-      updatePeriodo: async (id, data) => {
+      updateMaterial: async (id, data) => {
         set({ loading: true, error: null });
         try {
           const { data: updated, error } = await supabase
-            .from("academic_period")
+            .from("group_has_material")
             .update(data)
             .eq("id", id)
             .select();
           if (error) throw error;
           set({
-            periodos: get().periodos.map((p) =>
-              p.id === id ? { ...p, ...updated?.[0] } : p
+            materials: get().materials.map((m) =>
+              m.id === id ? { ...m, ...updated?.[0] } : m
             ),
           });
         } catch (err: any) {
@@ -112,15 +122,15 @@ export const PeriodAcademicStore = create<PeriodAcademicStoreProps>()(
         }
       },
 
-      deletePeriodo: async (id) => {
+      deleteMaterial: async (id) => {
         set({ loading: true, error: null });
         try {
           const { error } = await supabase
-            .from("academic_period")
+            .from("group_has_material")
             .delete()
             .eq("id", id);
           if (error) throw error;
-          set({ periodos: get().periodos.filter((p) => p.id !== id) });
+          set({ materials: get().materials.filter((m) => m.id !== id) });
         } catch (err: any) {
           set({ error: err.message });
         } finally {
@@ -128,12 +138,12 @@ export const PeriodAcademicStore = create<PeriodAcademicStoreProps>()(
         }
       },
 
-      clear: () => set({ periodos: [], error: null }),
+      clear: () => set({ materials: [], error: null }),
     }),
     {
-      name: "period-academic-store",
+      name: "group-has-material-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ periodos: state.periodos }),
+      partialize: (state) => ({ materials: state.materials }),
       version: 1,
     }
   )

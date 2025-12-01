@@ -82,14 +82,13 @@ export function UsersManagement() {
   const [isCreatingEnrolled, setIsCreatingEnrolled] = useState(false);
 
   /** Estados para el modal de relaciones padre-estudiante */
-  const [isParentStudentModalOpen, setIsParentStudentModalOpen] = useState(false);
+  const [isParentStudentModalOpen, setIsParentStudentModalOpen] =
+    useState(false);
   const [parentUsers, setParentUsers] = useState<Profile[]>([]);
   const [studentUsers, setStudentUsers] = useState<Profile[]>([]);
   const [selectedParentId, setSelectedParentId] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [isCreatingRelation, setIsCreatingRelation] = useState(false);
-
-
 
   /** Zustand stores para enrolled users */
   const studentEnrolled = EstudenteEnrrolledStore((state) => state.enrolled);
@@ -117,7 +116,9 @@ export function UsersManagement() {
   );
 
   /** ParentHasStudentStore para obtener relaciones padre-estudiante */
-  const parentStudentRelations = ParentHasStudentStore((state) => state.relations);
+  const parentStudentRelations = ParentHasStudentStore(
+    (state) => state.relations
+  );
   const parentStudentLoading = ParentHasStudentStore((state) => state.loading);
   const fetchParentStudentRelations = ParentHasStudentStore(
     (state) => state.fetchRelations
@@ -441,7 +442,8 @@ export function UsersManagement() {
         return;
       }
 
-      const parents = data?.map((item: any) => item.profiles).filter(Boolean) || [];
+      const parents =
+        data?.map((item: any) => item.profiles).filter(Boolean) || [];
       setParentUsers(parents);
     } catch (err) {
       console.error("Error inesperado al obtener padres:", err);
@@ -484,7 +486,8 @@ export function UsersManagement() {
         return;
       }
 
-      const students = data?.map((item: any) => item.profiles).filter(Boolean) || [];
+      const students =
+        data?.map((item: any) => item.profiles).filter(Boolean) || [];
       setStudentUsers(students);
     } catch (err) {
       console.error("Error inesperado al obtener estudiantes:", err);
@@ -944,7 +947,11 @@ export function UsersManagement() {
                   <span>Usuarios Activos Vinculados</span>
                 </div>
                 <Dialog
-                  open={activeSubTab === "familia" ? isParentStudentModalOpen : isCreateEnrolledOpen}
+                  open={
+                    activeSubTab === "familia"
+                      ? isParentStudentModalOpen
+                      : isCreateEnrolledOpen
+                  }
                   onOpenChange={(open) => {
                     if (activeSubTab === "familia") {
                       setIsParentStudentModalOpen(open);
@@ -973,10 +980,18 @@ export function UsersManagement() {
                   <DialogTrigger asChild>
                     <Button size="sm">
                       <UserPlus className="w-4 h-4 mr-2" />
-                      {activeSubTab === "familia" ? "Asignar Relación" : "Vincular Usuario"}
+                      {activeSubTab === "familia"
+                        ? "Asignar Relación"
+                        : "Vincular Usuario"}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className={activeSubTab === "familia" ? "sm:max-w-2xl" : "sm:max-w-md"}>
+                  <DialogContent
+                    className={
+                      activeSubTab === "familia"
+                        ? "sm:max-w-2xl"
+                        : "sm:max-w-md"
+                    }
+                  >
                     <DialogHeader className="pb-4">
                       <DialogTitle>
                         {activeSubTab === "familia"
@@ -999,7 +1014,9 @@ export function UsersManagement() {
                         <div className="grid grid-cols-2 gap-4">
                           {/* Lista de Padres */}
                           <div className="space-y-2">
-                            <Label className="text-base font-semibold">Usuario Padre</Label>
+                            <Label className="text-base font-semibold">
+                              Usuario Padre
+                            </Label>
                             <Select
                               value={selectedParentId}
                               onValueChange={setSelectedParentId}
@@ -1014,10 +1031,15 @@ export function UsersManagement() {
                                   </div>
                                 ) : (
                                   parentUsers.map((parent) => (
-                                    <SelectItem key={parent.id} value={parent.id}>
+                                    <SelectItem
+                                      key={parent.id}
+                                      value={parent.id}
+                                    >
                                       <div className="flex items-center space-x-2">
                                         <Avatar className="w-6 h-6">
-                                          <AvatarImage src={parent.avatar_url || ""} />
+                                          <AvatarImage
+                                            src={parent.avatar_url || ""}
+                                          />
                                           <AvatarFallback>
                                             {parent.full_name?.charAt(0) || "P"}
                                           </AvatarFallback>
@@ -1040,20 +1062,30 @@ export function UsersManagement() {
                             {/* Vista previa del padre seleccionado */}
                             {selectedParentId && (
                               <div className="mt-3 p-3 border rounded-lg bg-muted/30">
-                                <p className="text-xs text-muted-foreground mb-2">Padre seleccionado:</p>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  Padre seleccionado:
+                                </p>
                                 {(() => {
-                                  const parent = parentUsers.find(p => p.id === selectedParentId);
+                                  const parent = parentUsers.find(
+                                    (p) => p.id === selectedParentId
+                                  );
                                   return parent ? (
                                     <div className="flex items-center space-x-2">
                                       <Avatar className="w-8 h-8">
-                                        <AvatarImage src={parent.avatar_url || ""} />
+                                        <AvatarImage
+                                          src={parent.avatar_url || ""}
+                                        />
                                         <AvatarFallback>
                                           {parent.full_name?.charAt(0) || "P"}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div>
-                                        <p className="text-sm font-medium">{parent.full_name}</p>
-                                        <p className="text-xs text-muted-foreground">{parent.email}</p>
+                                        <p className="text-sm font-medium">
+                                          {parent.full_name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {parent.email}
+                                        </p>
                                       </div>
                                     </div>
                                   ) : null;
@@ -1064,7 +1096,9 @@ export function UsersManagement() {
 
                           {/* Lista de Estudiantes */}
                           <div className="space-y-2">
-                            <Label className="text-base font-semibold">Usuario Estudiante</Label>
+                            <Label className="text-base font-semibold">
+                              Usuario Estudiante
+                            </Label>
                             <Select
                               value={selectedStudentId}
                               onValueChange={setSelectedStudentId}
@@ -1079,12 +1113,18 @@ export function UsersManagement() {
                                   </div>
                                 ) : (
                                   studentUsers.map((student) => (
-                                    <SelectItem key={student.id} value={student.id}>
+                                    <SelectItem
+                                      key={student.id}
+                                      value={student.id}
+                                    >
                                       <div className="flex items-center space-x-2">
                                         <Avatar className="w-6 h-6">
-                                          <AvatarImage src={student.avatar_url || ""} />
+                                          <AvatarImage
+                                            src={student.avatar_url || ""}
+                                          />
                                           <AvatarFallback>
-                                            {student.full_name?.charAt(0) || "E"}
+                                            {student.full_name?.charAt(0) ||
+                                              "E"}
                                           </AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
@@ -1105,20 +1145,30 @@ export function UsersManagement() {
                             {/* Vista previa del estudiante seleccionado */}
                             {selectedStudentId && (
                               <div className="mt-3 p-3 border rounded-lg bg-muted/30">
-                                <p className="text-xs text-muted-foreground mb-2">Estudiante seleccionado:</p>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  Estudiante seleccionado:
+                                </p>
                                 {(() => {
-                                  const student = studentUsers.find(s => s.id === selectedStudentId);
+                                  const student = studentUsers.find(
+                                    (s) => s.id === selectedStudentId
+                                  );
                                   return student ? (
                                     <div className="flex items-center space-x-2">
                                       <Avatar className="w-8 h-8">
-                                        <AvatarImage src={student.avatar_url || ""} />
+                                        <AvatarImage
+                                          src={student.avatar_url || ""}
+                                        />
                                         <AvatarFallback>
                                           {student.full_name?.charAt(0) || "E"}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div>
-                                        <p className="text-sm font-medium">{student.full_name}</p>
-                                        <p className="text-xs text-muted-foreground">{student.email}</p>
+                                        <p className="text-sm font-medium">
+                                          {student.full_name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {student.email}
+                                        </p>
                                       </div>
                                     </div>
                                   ) : null;
@@ -1134,7 +1184,11 @@ export function UsersManagement() {
                             "text-green-800 bg-green-300 cursor-progress"
                           } hover:text-green-800 hover:bg-green-300`}
                           onClick={handleCreateParentStudentRelation}
-                          disabled={isCreatingRelation || !selectedParentId || !selectedStudentId}
+                          disabled={
+                            isCreatingRelation ||
+                            !selectedParentId ||
+                            !selectedStudentId
+                          }
                         >
                           {isCreatingRelation
                             ? "Creando Relación..."
@@ -1244,10 +1298,8 @@ export function UsersManagement() {
                     <Users className="w-4 h-4 mr-2" />
                     Padres
                   </Button> */}
-                                    <Button
-                    variant={
-                      activeSubTab === "familia" ? "default" : "ghost"
-                    }
+                  <Button
+                    variant={activeSubTab === "familia" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setActiveSubTab("familia")}
                   >
@@ -1309,40 +1361,58 @@ export function UsersManagement() {
                       }
 
                       // Construir datos enriquecidos con información de profiles
-                      const enrichedRelations = parentStudentRelations.map((relation) => {
-                        const parent = profiles.find((p) => p.id === relation.parent_id);
-                        const student = profiles.find((p) => p.id === relation.student_id);
-                        return {
-                          ...relation,
-                          parent,
-                          student,
-                        };
-                      });
+                      const enrichedRelations = parentStudentRelations.map(
+                        (relation) => {
+                          const parent = profiles.find(
+                            (p) => p.id === relation.parent_id
+                          );
+                          const student = profiles.find(
+                            (p) => p.id === relation.student_id
+                          );
+                          return {
+                            ...relation,
+                            parent,
+                            student,
+                          };
+                        }
+                      );
 
                       // Filtrar por búsqueda
-                      const filteredRelations = enrichedRelations.filter((item) => {
-                        const parentName = item.parent?.full_name?.toLowerCase() || "";
-                        const parentEmail = item.parent?.email?.toLowerCase() || "";
-                        const studentName = item.student?.full_name?.toLowerCase() || "";
-                        const studentEmail = item.student?.email?.toLowerCase() || "";
-                        const searchLower = searchActivos.toLowerCase();
+                      const filteredRelations = enrichedRelations.filter(
+                        (item) => {
+                          const parentName =
+                            item.parent?.full_name?.toLowerCase() || "";
+                          const parentEmail =
+                            item.parent?.email?.toLowerCase() || "";
+                          const studentName =
+                            item.student?.full_name?.toLowerCase() || "";
+                          const studentEmail =
+                            item.student?.email?.toLowerCase() || "";
+                          const searchLower = searchActivos.toLowerCase();
 
-                        return (
-                          parentName.includes(searchLower) ||
-                          parentEmail.includes(searchLower) ||
-                          studentName.includes(searchLower) ||
-                          studentEmail.includes(searchLower)
-                        );
-                      });
+                          return (
+                            parentName.includes(searchLower) ||
+                            parentEmail.includes(searchLower) ||
+                            studentName.includes(searchLower) ||
+                            studentEmail.includes(searchLower)
+                          );
+                        }
+                      );
 
                       return (
                         <div className="overflow-x-auto">
                           <table className="w-full border-collapse">
                             <thead>
                               <tr className="bg-muted/50 border-b">
-                                <th className="text-left p-3 font-semibold">Padre/Tutor</th>
-                                <th className="text-left p-3 font-semibold">Estudiante</th>
-                                <th className="text-left p-3 font-semibold">Última actualización</th>
+                                <th className="text-left p-3 font-semibold">
+                                  Padre/Tutor
+                                </th>
+                                <th className="text-left p-3 font-semibold">
+                                  Estudiante
+                                </th>
+                                <th className="text-left p-3 font-semibold">
+                                  Última actualización
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1355,20 +1425,29 @@ export function UsersManagement() {
                                     <div className="flex items-center space-x-3">
                                       <Avatar>
                                         <AvatarImage
-                                          src={relation.parent?.avatar_url || "/placeholder.svg"}
+                                          src={
+                                            relation.parent?.avatar_url ||
+                                            "/placeholder.svg"
+                                          }
                                         />
                                         <AvatarFallback>
-                                          {relation.parent?.full_name?.charAt(0)?.toUpperCase() ||
-                                            relation.parent?.email?.charAt(0)?.toUpperCase() ||
+                                          {relation.parent?.full_name
+                                            ?.charAt(0)
+                                            ?.toUpperCase() ||
+                                            relation.parent?.email
+                                              ?.charAt(0)
+                                              ?.toUpperCase() ||
                                             "P"}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div>
                                         <div className="font-medium">
-                                          {relation.parent?.full_name || "Sin nombre"}
+                                          {relation.parent?.full_name ||
+                                            "Sin nombre"}
                                         </div>
                                         <div className="text-sm text-muted-foreground">
-                                          {relation.parent?.email || "Sin correo"}
+                                          {relation.parent?.email ||
+                                            "Sin correo"}
                                         </div>
                                       </div>
                                     </div>
@@ -1377,27 +1456,38 @@ export function UsersManagement() {
                                     <div className="flex items-center space-x-3">
                                       <Avatar>
                                         <AvatarImage
-                                          src={relation.student?.avatar_url || "/placeholder.svg"}
+                                          src={
+                                            relation.student?.avatar_url ||
+                                            "/placeholder.svg"
+                                          }
                                         />
                                         <AvatarFallback>
-                                          {relation.student?.full_name?.charAt(0)?.toUpperCase() ||
-                                            relation.student?.email?.charAt(0)?.toUpperCase() ||
+                                          {relation.student?.full_name
+                                            ?.charAt(0)
+                                            ?.toUpperCase() ||
+                                            relation.student?.email
+                                              ?.charAt(0)
+                                              ?.toUpperCase() ||
                                             "E"}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div>
                                         <div className="font-medium">
-                                          {relation.student?.full_name || "Sin nombre"}
+                                          {relation.student?.full_name ||
+                                            "Sin nombre"}
                                         </div>
                                         <div className="text-sm text-muted-foreground">
-                                          {relation.student?.email || "Sin correo"}
+                                          {relation.student?.email ||
+                                            "Sin correo"}
                                         </div>
                                       </div>
                                     </div>
                                   </td>
                                   <td className="p-3">
                                     <div className="text-sm text-muted-foreground">
-                                      {new Date(relation.updated_at).toLocaleDateString("es-ES", {
+                                      {new Date(
+                                        relation.updated_at
+                                      ).toLocaleDateString("es-ES", {
                                         year: "numeric",
                                         month: "short",
                                         day: "numeric",
@@ -1517,7 +1607,8 @@ export function UsersManagement() {
                                 </div>
                               )}
                               <div className="text-xs text-muted-foreground mt-1">
-                                Periodo: {getPeriodName(enrolled.academic_period_id)} •
+                                Periodo:{" "}
+                                {getPeriodName(enrolled.academic_period_id)} •
                                 Matriculado:{" "}
                                 {new Date(
                                   enrolled.enrolled_at

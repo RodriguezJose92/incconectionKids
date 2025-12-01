@@ -85,11 +85,11 @@ export default function Login() {
       } else if (roleNames.includes("ruta")) {
         router.push("/usuario/ruta");
       } else {
-        router.push("/dashboard"); // Ruta por defecto
+        router.push("/"); // Ruta por defecto
       }
     } catch (error) {
       console.error("Error en getRolesAndRedirect:", error);
-      router.push("/dashboard");
+      router.push("/");
     }
   };
 

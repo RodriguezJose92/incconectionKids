@@ -24,6 +24,7 @@ type CycleStoreProps = {
   error: string | null;
 
   fetchCycles: () => Promise<void>;
+  fetchCyclesByAcademicPeriod: (academicPeriodId: string) => Promise<Cycle[]>;
   addCycle: (cycle: Cycle) => Promise<void>;
   updateCycle: (id: string, data: Partial<Cycle>) => Promise<void>;
   deleteCycle: (id: string) => Promise<void>;
@@ -45,6 +46,24 @@ export const CycleStore = create<CycleStoreProps>()(
           set({ cycles: data || [] });
         } catch (err: any) {
           set({ error: err.message });
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      fetchCyclesByAcademicPeriod: async (academicPeriodId: string) => {
+        set({ loading: true, error: null });
+        try {
+          const { data, error } = await supabase
+            .from("cycles")
+            .select("*")
+            .eq("academic_period_id", academicPeriodId);
+          if (error) throw error;
+          set({ cycles: data || [] });
+          return data || [];
+        } catch (err: any) {
+          set({ error: err.message });
+          return [];
         } finally {
           set({ loading: false });
         }
