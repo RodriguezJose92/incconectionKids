@@ -1,34 +1,30 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Space_Grotesk, DM_Sans } from "next/font/google"
-import "./globals.css"
+import type React from "react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "./app-sidebar";
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-space-grotesk",
-})
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-dm-sans",
-})
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Panel Estudiantil",
-  description: "Panel principal para estudiantes de colegio",
-  generator: "v0.dev",
-}
+  title: "Campus Virtual - Perfil Estudiante",
+  description: "Plataforma de aprendizaje universitario",
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="es" className={`${spaceGrotesk.variable} ${dmSans.variable} antialiased`}>
-      <body className="font-sans relative" >{children}</body>
+    <html lang="es">
+      <body className={inter.className}>
+        <SidebarProvider defaultOpen={true}>
+          <AppSidebar />
+          <main className="flex-1 overflow-auto">{children}</main>
+        </SidebarProvider>
+      </body>
     </html>
-  )
+  );
 }
