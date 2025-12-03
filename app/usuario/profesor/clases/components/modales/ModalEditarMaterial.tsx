@@ -11,12 +11,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, Loader2, FileText } from "lucide-react";
+import {
+  Edit,
+  Loader2,
+  FileText,
+  Image,
+  Video,
+  Music,
+  FileArchive,
+  File,
+} from "lucide-react";
 import {
   GroupHasMaterialStore,
   type GroupHasMaterial,
 } from "@/Stores/groupHasMaterialStore";
 import { Switch } from "@/components/ui/switch";
+import { PeriodAcademicStore } from "@/Stores/periodAcademicStore";
+import { CycleStore } from "@/Stores/cycleStore";
 
 interface ModalEditarMaterialProps {
   open: boolean;
@@ -35,6 +46,64 @@ export function ModalEditarMaterial({
   const [error, setError] = useState<string | null>(null);
 
   const { updateMaterial } = GroupHasMaterialStore();
+  const { periodos, fetchPeriodos } = PeriodAcademicStore();
+  const { cycles, fetchCycles } = CycleStore();
+
+  // Función para obtener el ícono según el tipo de archivo
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith("image/")) {
+      return <Image className="h-8 w-8 text-blue-500" />;
+    } else if (mimeType.startsWith("video/")) {
+      return <Video className="h-8 w-8 text-purple-500" />;
+    } else if (mimeType.startsWith("audio/")) {
+      return <Music className="h-8 w-8 text-green-500" />;
+    } else if (
+      mimeType.includes("zip") ||
+      mimeType.includes("rar") ||
+      mimeType.includes("compressed")
+    ) {
+      return <FileArchive className="h-8 w-8 text-orange-500" />;
+    } else if (mimeType.includes("pdf")) {
+      return <FileText className="h-8 w-8 text-red-500" />;
+    } else if (
+      mimeType.includes("word") ||
+      mimeType.includes("document") ||
+      mimeType.includes("presentation") ||
+      mimeType.includes("spreadsheet")
+    ) {
+      return <FileText className="h-8 w-8 text-blue-600" />;
+    }
+    return <File className="h-8 w-8 text-gray-500" />;
+  };
+
+  // Función para formatear el tamaño del archivo
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  // Obtener el nombre del periodo académico
+  const getPeriodoName = () => {
+    if (!material?.academic_period_id) return "No especificado";
+    const periodo = periodos.find((p) => p.id === material.academic_period_id);
+    return periodo?.name || "Periodo no encontrado";
+  };
+
+  // Obtener el nombre del ciclo académico
+  const getCycloName = () => {
+    if (!material?.cycle_id) return "No especificado";
+    const ciclo = cycles.find((c) => c.id === material.cycle_id);
+    return ciclo?.name || "Ciclo no encontrado";
+  };
+
+  // Cargar periodos y ciclos al abrir el modal
+  useEffect(() => {
+    if (open) {
+      fetchPeriodos();
+      fetchCycles();
+    }
+  }, [open, fetchPeriodos, fetchCycles]);
 
   // Cargar los datos del material cuando se abre el modal
   useEffect(() => {
@@ -99,22 +168,46 @@ export function ModalEditarMaterial({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Información del archivo (solo lectura) */}
           {material && (
-            <div className="p-3 border rounded-lg bg-muted/30">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-4 w-4 text-blue-500" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  Archivo actual:
-                </p>
+            <div className="space-y-2">
+              <Label>Archivo (no modificable)</Label>
+              <div className="flex items-start gap-4 p-4 border-2 border-muted rounded-lg bg-muted/30">
+                <div className="flex-shrink-0 mt-1">
+                  {getFileIcon(material.mime_type || "")}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {material.original_name || "Sin nombre"}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-xs text-muted-foreground">
+                      {material.file_size
+                        ? formatFileSize(material.file_size)
+                        : "Tamaño desconocido"}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      {material.mime_type || "Tipo desconocido"}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm font-semibold">
-                {material.original_name || "Sin nombre"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {material.mime_type || "Tipo desconocido"} •{" "}
-                {material.file_size
-                  ? `${(material.file_size / 1024).toFixed(2)} KB`
-                  : "Tamaño desconocido"}
-              </p>
+            </div>
+          )}
+
+          {/* Periodo Académico y Ciclo (solo lectura) */}
+          {material && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Periodo Académico</Label>
+                <div className="p-3 border rounded-lg bg-muted/20">
+                  <p className="text-sm font-medium">{getPeriodoName()}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Ciclo Académico</Label>
+                <div className="p-3 border rounded-lg bg-muted/20">
+                  <p className="text-sm font-medium">{getCycloName()}</p>
+                </div>
+              </div>
             </div>
           )}
 

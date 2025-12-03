@@ -26,6 +26,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import type { GroupHasMaterial } from "@/Stores/groupHasMaterialStore";
+import { CycleStore } from "@/Stores/cycleStore";
 
 interface TabContenidoProps {
   materiales: GroupHasMaterial[];
@@ -44,6 +45,14 @@ export function TabContenido({
   onAbrirModalEliminacion,
   onAbrirModalAgregar,
 }: TabContenidoProps) {
+  const { cycles } = CycleStore();
+
+  // Función para obtener el nombre del ciclo por ID
+  const getCycleName = (cycleId: string) => {
+    const cycle = cycles.find((c) => c.id === cycleId);
+    return cycle ? cycle.name : "Ciclo desconocido";
+  };
+
   // Función para formatear el tamaño del archivo
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "Desconocido";
@@ -123,9 +132,13 @@ export function TabContenido({
                           {formatDate(material.created_at)} •{" "}
                           {formatFileSize(material.file_size)}
                         </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          📅 <b>Periodo Académico:</b>{" "}
+                          {getCycleName(material.cycle_id)}
+                        </p>
                         {material.original_name && (
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {material.original_name}
+                            📎 {material.original_name}
                           </p>
                         )}
                       </div>
@@ -138,9 +151,7 @@ export function TabContenido({
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline">
-                        <Download className="h-4 w-4" />
-                      </Button>
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="sm" variant="outline">

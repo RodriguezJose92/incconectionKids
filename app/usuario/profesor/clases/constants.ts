@@ -1,6 +1,12 @@
 // Constantes y datos mock para el módulo de clases
 
-import type { Estudiante, Contenido, Actividad, Periodo, MaterialDidactico } from "./types";
+import type {
+  Estudiante,
+  Contenido,
+  Actividad,
+  Periodo,
+  MaterialDidactico,
+} from "./types";
 
 export const ESTUDIANTES_MOCK: Estudiante[] = [
   {

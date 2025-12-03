@@ -20,11 +20,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import type { Curso, Estudiante } from "../types";
-import {
-  ESTUDIANTES_MOCK,
-  ACTIVIDADES_MOCK,
-  PERIODOS,
-} from "../constants";
+import { ESTUDIANTES_MOCK, PERIODOS } from "../constants";
 import { TabContenido } from "./tabs/TabContenido";
 import { TabActividades } from "./tabs/TabActividades";
 import { TabEstudiantes } from "./tabs/TabEstudiantes";
@@ -34,6 +30,10 @@ import { ModalAgregarMaterial } from "./modales/ModalAgregarMaterial";
 import { ModalVisualizarMaterial } from "./modales/ModalVisualizarMaterial";
 import { ModalEditarMaterial } from "./modales/ModalEditarMaterial";
 import { ModalEliminarMaterial } from "./modales/ModalEliminarMaterial";
+import { ModalAgregarActivity } from "./modales/ModalAgregarActivity";
+import { ModalVisualizarActividad } from "./modales/ModalVisualizarActividad";
+import { ModalEditarActividad } from "./modales/ModalEditarActividad";
+import { ModalEliminarActividad } from "./modales/ModalEliminarActividad";
 import {
   PeriodAcademicStore,
   type PeriodoAcademico,
@@ -43,6 +43,10 @@ import {
   GroupHasMaterialStore,
   type GroupHasMaterial,
 } from "@/Stores/groupHasMaterialStore";
+import {
+  GroupHasActivityStore,
+  type GroupHasActivity,
+} from "@/Stores/groupHasActivityStore";
 
 interface CursoDetalleProps {
   curso: Curso;
@@ -62,6 +66,19 @@ export function CursoDetalle({ curso, onVolver }: CursoDetalleProps) {
     useState<GroupHasMaterial | null>(null);
   const [materialAEliminar, setMaterialAEliminar] =
     useState<GroupHasMaterial | null>(null);
+
+  // Estados para modales de actividades
+  const [modalAgregarActividad, setModalAgregarActividad] = useState(false);
+  const [modalVisualizarActividad, setModalVisualizarActividad] =
+    useState(false);
+  const [modalEditarActividad, setModalEditarActividad] = useState(false);
+  const [modalEliminarActividad, setModalEliminarActividad] = useState(false);
+  const [actividadSeleccionada, setActividadSeleccionada] =
+    useState<GroupHasActivity | null>(null);
+  const [actividadAEditar, setActividadAEditar] =
+    useState<GroupHasActivity | null>(null);
+  const [actividadAEliminar, setActividadAEliminar] =
+    useState<GroupHasActivity | null>(null);
   const [fechaAsistencia, setFechaAsistencia] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -87,6 +104,11 @@ export function CursoDetalle({ curso, onVolver }: CursoDetalleProps) {
   const { fetchCyclesByAcademicPeriod } = CycleStore();
   const { materials, loading, fetchMaterialsByGroupClassId } =
     GroupHasMaterialStore();
+  const {
+    activities,
+    loading: loadingActivities,
+    fetchActivitiesByGroupClassId,
+  } = GroupHasActivityStore();
 
   // Cargar período académico activo y sus ciclos
   useEffect(() => {
@@ -110,6 +132,13 @@ export function CursoDetalle({ curso, onVolver }: CursoDetalleProps) {
       fetchMaterialsByGroupClassId(curso.id);
     }
   }, [curso?.id, fetchMaterialsByGroupClassId]);
+
+  // Cargar actividades del curso
+  useEffect(() => {
+    if (curso?.id) {
+      fetchActivitiesByGroupClassId(curso.id);
+    }
+  }, [curso?.id, fetchActivitiesByGroupClassId]);
 
   // Handlers para modales
   const abrirModalAsistencia = () => {
@@ -151,8 +180,24 @@ export function CursoDetalle({ curso, onVolver }: CursoDetalleProps) {
     setModalAgregarMaterial(true);
   };
 
-  const handleNuevaActividad = () => {
-    console.log("Nueva actividad");
+  // Handlers para actividades
+  const abrirModalActividad = (actividad: GroupHasActivity) => {
+    setActividadSeleccionada(actividad);
+    setModalVisualizarActividad(true);
+  };
+
+  const abrirModalEdicionActividad = (actividad: GroupHasActivity) => {
+    setActividadAEditar(actividad);
+    setModalEditarActividad(true);
+  };
+
+  const abrirModalEliminacionActividad = (actividad: GroupHasActivity) => {
+    setActividadAEliminar(actividad);
+    setModalEliminarActividad(true);
+  };
+
+  const abrirModalAgregarActividad = () => {
+    setModalAgregarActividad(true);
   };
 
   return (
@@ -320,8 +365,12 @@ export function CursoDetalle({ curso, onVolver }: CursoDetalleProps) {
 
         <TabsContent value="actividades" className="space-y-4">
           <TabActividades
-            actividades={ACTIVIDADES_MOCK}
-            onNuevaActividad={handleNuevaActividad}
+            actividades={activities}
+            loading={loadingActivities}
+            onAbrirModal={abrirModalActividad}
+            onAbrirModalEdicion={abrirModalEdicionActividad}
+            onAbrirModalEliminacion={abrirModalEliminacionActividad}
+            onAbrirModalAgregar={abrirModalAgregarActividad}
           />
         </TabsContent>
 
@@ -387,6 +436,35 @@ export function CursoDetalle({ curso, onVolver }: CursoDetalleProps) {
         open={modalEliminarMaterial}
         onOpenChange={setModalEliminarMaterial}
         material={materialAEliminar}
+      />
+
+      {/* Modal de agregar actividad */}
+      <ModalAgregarActivity
+        open={modalAgregarActividad}
+        onOpenChange={setModalAgregarActividad}
+        groupHasClassId={curso.id}
+        cycleId={cicloSeleccionado}
+      />
+
+      {/* Modal de visualizar actividad */}
+      <ModalVisualizarActividad
+        open={modalVisualizarActividad}
+        onOpenChange={setModalVisualizarActividad}
+        actividad={actividadSeleccionada}
+      />
+
+      {/* Modal de editar actividad */}
+      <ModalEditarActividad
+        open={modalEditarActividad}
+        onOpenChange={setModalEditarActividad}
+        actividad={actividadAEditar}
+      />
+
+      {/* Modal de eliminar actividad */}
+      <ModalEliminarActividad
+        open={modalEliminarActividad}
+        onOpenChange={setModalEliminarActividad}
+        actividad={actividadAEliminar}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ToastContainer } from 'react-toastify';
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
@@ -32,17 +32,7 @@ export default function RootLayout({
       >
         {children}
         <div id="modal-root"></div>
-        <ToastContainer
-          position="top-left"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
+        <Toaster />
       </body>
     </html>
   );

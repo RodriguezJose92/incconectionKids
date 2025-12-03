@@ -52,13 +52,13 @@ const menuItems = [
     icon: BookOpen,
   },
   {
-    title: "Comunicación",
-    url: "/usuario/profesor/comunicacion",
+    title: "Eventos",
+    url: "/usuario/profesor/eventos",
     icon: MessageSquare,
   },
   {
-    title: "Calendario",
-    url: "/usuario/profesor/calendario",
+    title: "Horario",
+    url: "/usuario/profesor/horario",
     icon: Calendar,
   },
   {

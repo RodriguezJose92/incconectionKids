@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { ManagmentStorage } from "@/components/Services/ManagmentStorage/ManagmentStorage";
 import { createClient } from "@/lib/supabase/client";
 import { FcGoogle } from "react-icons/fc";
@@ -42,13 +42,22 @@ export default function Login() {
 
       if (profileError) {
         console.error("Error al obtener roles:", profileError);
-        router.push("/dashboard"); // Ruta por defecto si hay error
+        toast.error("Acceso denegado", {
+          description: "No se pudo verificar los permisos de tu cuenta. Por favor, contacta con el administrador.",
+          duration: 5000,
+        });
+        await supabase.auth.signOut();
         return;
       }
 
       // Si no tiene roles asignados
       if (!profileRoles || profileRoles.length === 0) {
-        router.push("/dashboard"); // Ruta por defecto
+        console.error("Error al obtener roles , no tiene asignado");
+        toast.error("Acceso denegado", {
+          description: "Tu cuenta no tiene roles asignados. Por favor, contacta con el administrador para obtener los permisos necesarios.",
+          duration: 6000,
+        });
+        await supabase.auth.signOut();
         return;
       }
 
@@ -61,7 +70,11 @@ export default function Login() {
 
       if (rolesError) {
         console.error("Error al obtener nombres de roles:", rolesError);
-        router.push("/dashboard");
+        toast.error("Acceso denegado", {
+          description: "No se pudo cargar la información de tus permisos. Por favor, intenta nuevamente más tarde.",
+          duration: 5000,
+        });
+        await supabase.auth.signOut();
         return;
       }
 
@@ -89,12 +102,17 @@ export default function Login() {
       }
     } catch (error) {
       console.error("Error en getRolesAndRedirect:", error);
+      toast.error("Error al iniciar sesión", {
+        description: "Ocurrió un problema al procesar tu información. Por favor, intenta nuevamente.",
+        duration: 5000,
+      });
+      await supabase.auth.signOut();
       router.push("/");
     }
   };
 
   /** Si tuviesemos que verificar label inputs con correo y contraseña */
-  const verifyUsersLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const verifyUsersLogin = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -138,8 +156,6 @@ export default function Login() {
 
         // Guardar usuario en UserInfoStore
         UserInfoStore.getState().setUser(data.user);
-
-        toast.success("Inicio de sesión exitoso");
 
         // Obtener roles del usuario y redirigir
         await getRolesAndRedirect(data.user.id);
@@ -231,7 +247,7 @@ export default function Login() {
         </CardHeader>
 
         <CardContent>
-          <form className="space-y-4" aria-describedby="form-ayuda">
+          <form className="space-y-4" aria-describedby="form-ayuda" onSubmit={verifyUsersLogin}>
             {/* Campos de correo y contraseña */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-white text-sm font-medium">
@@ -281,7 +297,7 @@ export default function Login() {
 
             {/* Botón de iniciar sesión con correo y contraseña */}
             <Button
-              type="button"
+              type="submit"
               aria-label="Iniciar sesión con correo y contraseña"
               className={cn(
                 "w-full py-3",
@@ -293,7 +309,6 @@ export default function Login() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
                 "transition-all duration-200 ease-out cursor-pointer"
               )}
-              onClick={verifyUsersLogin}
               disabled={loading}
             >
               {loading ? (

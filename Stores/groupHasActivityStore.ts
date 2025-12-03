@@ -6,61 +6,60 @@ import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
 
-export type GroupHasMaterial = {
+export type GroupHasActivity = {
   id: string; // uuid
   group_has_class_id: string; // uuid (relación con la clase del grupo)
   cycle_id: string; // uuid (relación con el ciclo académico)
-  academic_period_id?: string; // uuid (relación con el periodo académico)
 
   title: string; // text
+  description: string | null; // text
 
   bucket: string; // text
   storage_path: string; // text
   original_name: string | null; // text
   mime_type: string | null; // text
   file_size: number | null; // int8
-
+  limit_date: string | null; // timestamptz
   is_active: boolean; // bool
 
   created_at: string; // timestamptz
   updated_at: string; // timestamptz
 };
 
-type GroupHasMaterialStoreProps = {
-  materials: GroupHasMaterial[];
+type GroupHasActivityStoreProps = {
+  activities: GroupHasActivity[];
   loading: boolean;
   error: string | null;
 
-  fetchMaterials: () => Promise<void>;
-  fetchMaterialsByGroupClassId: (
+  fetchActivities: () => Promise<void>;
+  fetchActivitiesByGroupClassId: (
     groupHasClassId: string
-  ) => Promise<GroupHasMaterial[]>;
-  addMaterial: (material: GroupHasMaterial) => Promise<void>;
-  updateMaterial: (
+  ) => Promise<GroupHasActivity[]>;
+  addActivity: (activity: GroupHasActivity) => Promise<void>;
+  updateActivity: (
     id: string,
-    data: Partial<GroupHasMaterial>
+    data: Partial<GroupHasActivity>
   ) => Promise<void>;
-  deleteMaterial: (id: string) => Promise<void>;
+  deleteActivity: (id: string) => Promise<void>;
   clear: () => void;
 };
 
-export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
+export const GroupHasActivityStore = create<GroupHasActivityStoreProps>()(
   persist(
     (set, get) => ({
-      materials: [],
+      activities: [],
       loading: false,
       error: null,
 
-      fetchMaterials: async () => {
+      fetchActivities: async () => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("group_has_material")
+            .from("group_has_activity")
             .select("*");
 
-          console.log(data);
           if (error) throw error;
-          set({ materials: data || [] });
+          set({ activities: data || [] });
         } catch (err: any) {
           set({ error: err.message });
         } finally {
@@ -68,15 +67,16 @@ export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
         }
       },
 
-      fetchMaterialsByGroupClassId: async (groupHasClassId) => {
+      fetchActivitiesByGroupClassId: async (groupHasClassId) => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("group_has_material")
+            .from("group_has_activity")
             .select("*")
             .eq("group_has_class_id", groupHasClassId);
+
           if (error) throw error;
-          set({ materials: data || [] });
+          set({ activities: data || [] });
           return data || [];
         } catch (err: any) {
           set({ error: err.message });
@@ -86,15 +86,16 @@ export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
         }
       },
 
-      addMaterial: async (material) => {
+      addActivity: async (activity) => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase
-            .from("group_has_material")
-            .insert(material)
+            .from("group_has_activity")
+            .insert(activity)
             .select();
+
           if (error) throw error;
-          set({ materials: [...get().materials, ...(data || [])] });
+          set({ activities: [...get().activities, ...(data || [])] });
         } catch (err: any) {
           set({ error: err.message });
         } finally {
@@ -102,18 +103,19 @@ export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
         }
       },
 
-      updateMaterial: async (id, data) => {
+      updateActivity: async (id, data) => {
         set({ loading: true, error: null });
         try {
           const { data: updated, error } = await supabase
-            .from("group_has_material")
+            .from("group_has_activity")
             .update(data)
             .eq("id", id)
             .select();
+
           if (error) throw error;
           set({
-            materials: get().materials.map((m) =>
-              m.id === id ? { ...m, ...updated?.[0] } : m
+            activities: get().activities.map((a) =>
+              a.id === id ? { ...a, ...(updated?.[0] || {}) } : a
             ),
           });
         } catch (err: any) {
@@ -123,15 +125,18 @@ export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
         }
       },
 
-      deleteMaterial: async (id) => {
+      deleteActivity: async (id) => {
         set({ loading: true, error: null });
         try {
           const { error } = await supabase
-            .from("group_has_material")
+            .from("group_has_activity")
             .delete()
             .eq("id", id);
+
           if (error) throw error;
-          set({ materials: get().materials.filter((m) => m.id !== id) });
+          set({
+            activities: get().activities.filter((a) => a.id !== id),
+          });
         } catch (err: any) {
           set({ error: err.message });
         } finally {
@@ -139,12 +144,12 @@ export const GroupHasMaterialStore = create<GroupHasMaterialStoreProps>()(
         }
       },
 
-      clear: () => set({ materials: [], error: null }),
+      clear: () => set({ activities: [], error: null }),
     }),
     {
-      name: "group-has-material-store",
+      name: "group-has-activity-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ materials: state.materials }),
+      partialize: (state) => ({ activities: state.activities }),
       version: 1,
     }
   )

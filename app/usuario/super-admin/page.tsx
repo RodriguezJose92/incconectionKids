@@ -58,7 +58,7 @@ export default function Page() {
         return <SubjectsManagement />;
       case "periodo-academico":
         return <PeriodAcademicManagement />;
-              case "ciclos":
+      case "ciclos":
         return <CycleManagement />;
       case "tienda":
         return <StoreManagement />;
